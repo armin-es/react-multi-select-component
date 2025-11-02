@@ -2,6 +2,10 @@
 
 React + TypeScript implementation of a reusable, performant, accessible multi‑select dropdown designed for 10k+ items.
 
+## Demo
+
+[Watch demo video on Loom](https://www.loom.com/share/992476c19fed406e90b5be456aa9f8b4)
+
 ## Run
 
 Install deps: `npm i`  
