@@ -93,6 +93,7 @@ export default function MultiSelect({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const comboboxRef = useRef<HTMLDivElement | null>(null);
   const scrollingContainerRef = useRef<HTMLDivElement | null>(null);
+  const virtualListContainerRef = useRef<HTMLDivElement | null>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
   // Async refs
@@ -329,6 +330,41 @@ export default function MultiSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
+  // Scroll active option into view
+  useEffect(() => {
+    if (!open || orderedItems.length === 0 || activeIndex < 0) return;
+
+    const container = isSync ? virtualListContainerRef.current : scrollingContainerRef.current;
+    if (!container) return;
+
+    let optionTop: number;
+    let optionHeight: number;
+
+    if (isSync) {
+      // Sync mode: Fixed row heights (no DOM lookup needed)
+      optionTop = activeIndex * rowHeight;
+      optionHeight = rowHeight;
+    } else {
+      // Async mode: Dynamic row heights - find element
+      const optionElement = document.getElementById(`${listboxId}-option-${activeIndex}`);
+      if (!optionElement) return;
+      optionTop = optionElement.offsetTop;
+      optionHeight = optionElement.offsetHeight || rowHeight;
+    }
+
+    const containerTop = container.scrollTop;
+    const containerHeight = container.clientHeight;
+    const optionBottom = optionTop + optionHeight;
+    const viewportBottom = containerTop + containerHeight;
+
+    // Scroll if option is outside viewport
+    if (optionTop < containerTop) {
+      container.scrollTop = optionTop;
+    } else if (optionBottom > viewportBottom) {
+      container.scrollTop = optionBottom - containerHeight;
+    }
+  }, [activeIndex, open, isSync, orderedItems.length, listboxId, rowHeight]);
+
   const renderRow = (item: OrderedItem, index: number, style: CSSProperties) => {
     const active = index === activeIndex;
     const selected = selectedSet.has(item.id);
@@ -557,6 +593,7 @@ export default function MultiSelect({
                   rowHeight={rowHeight}
                   height={height}
                   renderRow={renderRow}
+                  containerRef={virtualListContainerRef}
                 />
               ) : null}
             </div>

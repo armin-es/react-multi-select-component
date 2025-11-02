@@ -7,19 +7,21 @@ type VirtualListProps<T> = {
     height: number;
     overscan?: number;
     renderRow: (item: T, index: number, style: CSSProperties) => JSX.Element;
+    containerRef?: React.RefObject<HTMLDivElement>;
 };
 
-export function VirtualList<T>({ items, rowHeight, height, overscan = 6, renderRow }: VirtualListProps<T>) {
-    const containerRef = useRef<HTMLDivElement | null>(null);
+export function VirtualList<T>({ items, rowHeight, height, overscan = 6, renderRow, containerRef }: VirtualListProps<T>) {
+    const internalRef = useRef<HTMLDivElement | null>(null);
+    const containerRefFinal = containerRef || internalRef;
     const [scrollTop, setScrollTop] = useState(0);
 
     useLayoutEffect(() => {
-        const el = containerRef.current;
+        const el = containerRefFinal.current;
         if (!el) return;
         const onScroll = () => setScrollTop(el.scrollTop);
         el.addEventListener('scroll', onScroll, { passive: true });
         return () => el.removeEventListener('scroll', onScroll);
-    }, []);
+    }, [containerRefFinal]);
 
     const total = items.length;
     const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
@@ -30,7 +32,7 @@ export function VirtualList<T>({ items, rowHeight, height, overscan = 6, renderR
     const contentHeight = total * rowHeight;
 
     return (
-        <div ref={containerRef} style={{ overflowY: 'auto', height, position: 'relative' }}>
+        <div ref={containerRefFinal} style={{ overflowY: 'auto', height, position: 'relative' }}>
             <div style={{ height: contentHeight, position: 'relative' }}>
                 <div style={{ position: 'absolute', top: offsetY, left: 0, right: 0 }}>
                     {visibleItems.map((item, i) => {
