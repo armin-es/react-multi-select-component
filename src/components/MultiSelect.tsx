@@ -87,6 +87,8 @@ export default function MultiSelect({
   const [asyncItems, setAsyncItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  // Cache of selected items for token display (persists across searches)
+  const [selectedItemsCache, setSelectedItemsCache] = useState<Map<string, Item>>(new Map());
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const comboboxRef = useRef<HTMLDivElement | null>(null);
@@ -127,21 +129,41 @@ export default function MultiSelect({
   const height = visibleRows * rowHeight;
 
   const commitSelection = useCallback((id: string) => {
-    const next = selectedSet.has(id) ? selectedIds.filter(x => x !== id) : [...selectedIds, id];
+    const isRemoving = selectedSet.has(id);
+    const next = isRemoving ? selectedIds.filter(x => x !== id) : [...selectedIds, id];
     onChange(next);
     setMruOrder(prev => {
       const filtered = prev.filter(x => x !== id);
       return [id, ...filtered];
     });
+    // Update selected items cache
+    if (isAsync) {
+      setSelectedItemsCache(prev => {
+        const nextCache = new Map(prev);
+        if (isRemoving) {
+          nextCache.delete(id);
+        } else {
+          // Try to find the item in current asyncItems first, otherwise keep existing cache entry
+          const item = asyncItems.find(i => i.id === id);
+          if (item) {
+            nextCache.set(id, item);
+          }
+        }
+        return nextCache;
+      });
+    }
     // Clear search query after selection so user can easily search for next item
     setQuery('');
     // Reset active index to top of list for next search
     setActiveIndex(0);
-  }, [onChange, selectedIds, selectedSet]);
+  }, [onChange, selectedIds, selectedSet, isAsync, asyncItems]);
 
   const clearAll = useCallback(() => {
     onChange([]);
-  }, [onChange]);
+    if (isAsync) {
+      setSelectedItemsCache(new Map());
+    }
+  }, [onChange, isAsync]);
 
   // Async: Load more items
   const loadMore = useCallback(async (reset = false) => {
@@ -158,11 +180,21 @@ export default function MultiSelect({
       const fetched = await fetchItemsRef.current(queryRef.current, pageRef.current);
       setAsyncItems(prev => reset ? fetched : [...prev, ...fetched]);
       setHasMore(fetched.length >= pageSize);
+      // Update cache with any newly fetched selected items
+      setSelectedItemsCache(prev => {
+        const nextCache = new Map(prev);
+        fetched.forEach(item => {
+          if (selectedSet.has(item.id)) {
+            nextCache.set(item.id, item);
+          }
+        });
+        return nextCache;
+      });
       pageRef.current += 1;
     } finally {
       setLoading(false);
     }
-  }, [pageSize]);
+  }, [pageSize, selectedSet]);
 
   // Async: Debounced search
   useEffect(() => {
@@ -329,7 +361,8 @@ export default function MultiSelect({
   // Find selected items for token display (works in both modes)
   const getSelectedItem = (id: string): Item | undefined => {
     if (isSync && items) return items.find(i => i.id === id);
-    return asyncItems.find(i => i.id === id);
+    // In async mode, check cache first (persists across searches), then asyncItems
+    return selectedItemsCache.get(id) || asyncItems.find(i => i.id === id);
   };
 
   const statusId = `${comboId}-status`;
