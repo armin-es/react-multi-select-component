@@ -164,6 +164,8 @@ export default function MultiSelect({
     if (isAsync) {
       setSelectedItemsCache(new Map());
     }
+    // Return focus to input after clearing
+    inputRef.current?.focus();
   }, [onChange, isAsync]);
 
   // Async: Load more items
@@ -558,10 +560,18 @@ export default function MultiSelect({
             <button
               type="button"
               className="ms-clear"
-              onClick={(e) => { e.stopPropagation(); clearAll(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                clearAll();
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
                   e.stopPropagation();
+                  clearAll();
+                } else if (e.key === 'Escape') {
+                  // Allow Escape to propagate to combobox handler to close dropdown
+                  // Don't prevent default or stop propagation
                 }
               }}
               aria-label="Clear selected"
