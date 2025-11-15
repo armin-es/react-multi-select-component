@@ -1,8 +1,6 @@
 import { useCallback, useId, useMemo, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
-import { VirtualList } from './VirtualList';
 import { orderItemsSync, orderItemsAsync } from '../utils/ordering';
-import type { Item, MultiSelectProps } from '../types';
+import type { MultiSelectProps } from '../types';
 import type { OrderedItem } from '../utils/ordering';
 import {
   useAsyncItems,
@@ -12,6 +10,15 @@ import {
   useKeyboardNavigation,
   useMRUOrder,
 } from '../hooks';
+import {
+  StatusMessage,
+  ClearButton,
+  Token,
+  Listbox,
+  useTokenNavigation,
+  useSelection,
+  getSelectedItem as getSelectedItemUtil,
+} from './MultiSelect/index';
 
 /**
  * A performant, accessible multi-select dropdown component with support for large datasets.
@@ -123,28 +130,15 @@ export default function MultiSelect({
     return orderItemsAsync(asyncItems, selectedIds, mruOrder);
   }, [isSync, items, asyncItems, selectedIds, query, mruOrder]);
 
-  const commitSelection = useCallback((id: string) => {
-    const isRemoving = selectedSet.has(id);
-    const next = isRemoving ? selectedIds.filter(x => x !== id) : [...selectedIds, id];
-    onChange(next);
-    updateMRU(id);
-    // Update selected items cache
-    if (isAsync) {
-      setSelectedItemsCache(prev => {
-        const nextCache = new Map(prev);
-        if (isRemoving) {
-          nextCache.delete(id);
-        } else {
-          const item = asyncItems.find(i => i.id === id);
-          if (item) {
-            nextCache.set(id, item);
-          }
-        }
-        return nextCache;
-      });
-    }
-    setQuery('');
-  }, [onChange, selectedIds, selectedSet, isAsync, asyncItems, updateMRU, setSelectedItemsCache]);
+  const { commitSelection } = useSelection({
+    selectedIds,
+    onChange,
+    updateMRU,
+    isAsync,
+    asyncItems,
+    setSelectedItemsCache,
+    setQuery,
+  });
 
   const {
     activeIndex,
@@ -192,6 +186,11 @@ export default function MultiSelect({
 
   const height = visibleRows * rowHeight;
 
+  // Find selected items for token display (works in both modes)
+  const getSelectedItem = useCallback((id: string) => {
+    return getSelectedItemUtil(id, isSync, items, selectedItemsCache, asyncItems);
+  }, [isSync, items, selectedItemsCache, asyncItems]);
+
   const clearAll = useCallback(() => {
     onChange([]);
     if (isAsync) {
@@ -200,7 +199,16 @@ export default function MultiSelect({
     inputRef.current?.focus();
   }, [onChange, isAsync, setSelectedItemsCache]);
 
-  const renderRow = (item: OrderedItem, index: number, style: CSSProperties) => {
+  // Token navigation hook
+  const { handleTokenKeyDown } = useTokenNavigation({
+    selectedIds,
+    getSelectedItem,
+    commitSelection,
+    inputRef,
+  });
+
+  // Render row for virtualized list (sync mode only)
+  const renderRow = useCallback((item: OrderedItem, index: number, style: React.CSSProperties) => {
     const active = index === activeIndex;
     const selected = selectedSet.has(item.id);
     const id = `${listboxId}-option-${index}`;
@@ -227,14 +235,7 @@ export default function MultiSelect({
         {selected ? <span className="ms-check" aria-hidden="true">✓</span> : null}
       </div>
     );
-  };
-
-  // Find selected items for token display (works in both modes)
-  const getSelectedItem = (id: string): Item | undefined => {
-    if (isSync && items) return items.find(i => i.id === id);
-    // In async mode, check cache first (persists across searches), then asyncItems
-    return selectedItemsCache.get(id) || asyncItems.find(i => i.id === id);
-  };
+  }, [activeIndex, selectedSet, listboxId, setActiveIndex, commitSelection]);
 
   const statusId = `${comboId}-status`;
   const helperId = `${comboId}-helper`;
@@ -243,19 +244,13 @@ export default function MultiSelect({
     <div className="ms-root">
       <label className="ms-label-outer" htmlFor={comboId} id={helperId}>{label}</label>
 
-      {/* Status announcements for screen readers */}
-      <div
+      <StatusMessage
+        loading={loading}
+        isAsync={isAsync}
+        open={open}
+        itemCount={orderedItems.length}
         id={statusId}
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="sr-only"
-        style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', borderWidth: 0 }}
-      >
-        {loading && isAsync && 'Loading results'}
-        {!loading && open && orderedItems.length === 0 && 'No results found'}
-        {!loading && open && orderedItems.length > 0 && `${orderedItems.length} ${orderedItems.length === 1 ? 'option' : 'options'} available`}
-      </div>
+      />
 
       <div
         ref={comboboxRef}
@@ -275,91 +270,12 @@ export default function MultiSelect({
             const it = getSelectedItem(id);
             if (!it) return null;
             return (
-              <button
-                type="button"
+              <Token
                 key={id}
-                className="ms-token"
-                aria-label={`Remove ${it.label}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  commitSelection(id);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Backspace' || e.key === 'Delete') {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    // Find next/prev token IDs and their labels (before removal)
-                    const currentIndex = selectedIds.indexOf(id);
-                    const nextId = currentIndex < selectedIds.length - 1
-                      ? selectedIds[currentIndex + 1]
-                      : null;
-                    const prevId = currentIndex > 0
-                      ? selectedIds[currentIndex - 1]
-                      : null;
-
-                    const nextLabel = nextId ? getSelectedItem(nextId)?.label : null;
-                    const prevLabel = prevId ? getSelectedItem(prevId)?.label : null;
-
-                    commitSelection(id);
-
-                    // After removal, focus the next token, previous token, or input
-                    requestAnimationFrame(() => {
-                      if (nextLabel) {
-                        // Focus the next token button
-                        const nextButton = document.querySelector(`[aria-label="Remove ${nextLabel}"]`) as HTMLElement;
-                        nextButton?.focus();
-                      } else if (prevLabel) {
-                        // Focus the previous token button
-                        const prevButton = document.querySelector(`[aria-label="Remove ${prevLabel}"]`) as HTMLElement;
-                        prevButton?.focus();
-                      } else {
-                        // No more tokens, focus the input
-                        inputRef.current?.focus();
-                      }
-                    });
-                  } else if (e.key === 'ArrowLeft') {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    // Focus previous token or input
-                    const currentIndex = selectedIds.indexOf(id);
-                    const prevId = currentIndex > 0 ? selectedIds[currentIndex - 1] : null;
-
-                    if (prevId) {
-                      const prevLabel = getSelectedItem(prevId)?.label;
-                      if (prevLabel) {
-                        const prevButton = document.querySelector(`[aria-label="Remove ${prevLabel}"]`) as HTMLElement;
-                        prevButton?.focus();
-                      }
-                    } else {
-                      // At first token, focus the input
-                      inputRef.current?.focus();
-                    }
-                  } else if (e.key === 'ArrowRight') {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    // Focus next token or input
-                    const currentIndex = selectedIds.indexOf(id);
-                    const nextId = currentIndex < selectedIds.length - 1 ? selectedIds[currentIndex + 1] : null;
-
-                    if (nextId) {
-                      const nextLabel = getSelectedItem(nextId)?.label;
-                      if (nextLabel) {
-                        const nextButton = document.querySelector(`[aria-label="Remove ${nextLabel}"]`) as HTMLElement;
-                        nextButton?.focus();
-                      }
-                    } else {
-                      // At last token, focus the input
-                      inputRef.current?.focus();
-                    }
-                  }
-                }}
-              >
-                <span>{it.label}</span>
-                <span className="ms-token-x" aria-hidden>×</span>
-              </button>
+                item={it}
+                onRemove={commitSelection}
+                onKeyDown={handleTokenKeyDown}
+              />
             );
           })}
           <input
@@ -389,82 +305,26 @@ export default function MultiSelect({
             autoCapitalize="off"
             spellCheck="false"
           />
-          {selectedIds.length > 0 && (
-            <button
-              type="button"
-              className="ms-clear"
-              onClick={(e) => {
-                e.stopPropagation();
-                clearAll();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  clearAll();
-                } else if (e.key === 'Escape') {
-                  // Allow Escape to propagate to combobox handler to close dropdown
-                  // Don't prevent default or stop propagation
-                }
-              }}
-              aria-label="Clear selected"
-            >
-              Clear
-            </button>
-          )}
+          {selectedIds.length > 0 && <ClearButton onClear={clearAll} />}
         </div>
 
         <div className="ms-popover" role="presentation" data-open={open} hidden={!open}>
-          {loading && isAsync && orderedItems.length === 0 ? (
-            <div role="listbox" id={listboxId} aria-multiselectable>
-              <div className="ms-empty">
-                <span className="ms-spinner" aria-hidden="true"></span>
-                <span>Loading results...</span>
-              </div>
-            </div>
-          ) : orderedItems.length === 0 ? (
-            <div role="listbox" id={listboxId} aria-multiselectable>
-              <div className="ms-empty">
-                <span>No results found</span>
-              </div>
-            </div>
-          ) : isSync ? (
-            <div role="listbox" id={listboxId} aria-multiselectable>
-              {orderedItems.length > 0 ? (
-                <VirtualList
-                  items={orderedItems}
-                  rowHeight={rowHeight}
-                  height={height}
-                  renderRow={renderRow}
-                  containerRef={virtualListContainerRef}
-                />
-              ) : null}
-            </div>
-          ) : (
-            <div
-              role="listbox"
-              id={listboxId}
-              aria-multiselectable
-              style={{ overflowY: 'auto', height, position: 'relative' }}
-              ref={scrollingContainerRef}
-              onScroll={handleScroll}
-            >
-              <div style={{ position: 'relative' }}>
-                {orderedItems.map((item, i) => renderRow(item, i, { minHeight: rowHeight }))}
-              </div>
-              {!loading && hasMore && orderedItems.length > 0 && (
-                <div style={{ height: rowHeight }} className="ms-option" data-loading>
-                  <span>Scroll for more</span>
-                </div>
-              )}
-              {loading && (
-                <div style={{ height: rowHeight }} className="ms-option" data-loading>
-                  <span className="ms-spinner" aria-hidden="true"></span>
-                  <span>Loading more...</span>
-                </div>
-              )}
-            </div>
-          )}
+          <Listbox
+            isSync={isSync}
+            orderedItems={orderedItems}
+            loading={loading}
+            hasMore={hasMore}
+            listboxId={listboxId}
+            activeIndex={activeIndex}
+            selectedSet={selectedSet}
+            rowHeight={rowHeight}
+            height={height}
+            renderRow={isSync ? renderRow : undefined}
+            containerRef={isSync ? virtualListContainerRef : scrollingContainerRef}
+            onScroll={handleScroll}
+            onMouseEnter={setActiveIndex}
+            onSelect={commitSelection}
+          />
         </div>
       </div>
     </div>
