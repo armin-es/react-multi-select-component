@@ -9,6 +9,8 @@ interface ListboxProps {
     orderedItems: OrderedItem[];
     loading: boolean;
     hasMore: boolean;
+    error: Error | null;
+    onRetry?: () => void;
     listboxId: string;
     activeIndex: number;
     selectedSet: Set<string>;
@@ -29,6 +31,8 @@ export function Listbox({
     orderedItems,
     loading,
     hasMore,
+    error,
+    onRetry,
     listboxId,
     activeIndex,
     selectedSet,
@@ -41,11 +45,15 @@ export function Listbox({
     onSelect,
 }: ListboxProps) {
     if (loading && orderedItems.length === 0) {
-        return <EmptyState loading={true} listboxId={listboxId} />;
+        return <EmptyState loading={true} error={null} listboxId={listboxId} />;
+    }
+
+    if (error && orderedItems.length === 0) {
+        return <EmptyState loading={false} error={error} onRetry={onRetry} listboxId={listboxId} />;
     }
 
     if (orderedItems.length === 0) {
-        return <EmptyState loading={false} listboxId={listboxId} />;
+        return <EmptyState loading={false} error={null} listboxId={listboxId} />;
     }
 
     if (isSync) {

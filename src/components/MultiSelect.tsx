@@ -111,9 +111,11 @@ export default function MultiSelect({
     asyncItems,
     loading,
     hasMore,
+    error,
     selectedItemsCache,
     setSelectedItemsCache,
     handleScroll,
+    retry,
   } = useAsyncItems({
     fetchItems,
     query,
@@ -249,6 +251,7 @@ export default function MultiSelect({
         isAsync={isAsync}
         open={open}
         itemCount={orderedItems.length}
+        error={isAsync ? error : null}
         id={statusId}
       />
 
@@ -314,6 +317,8 @@ export default function MultiSelect({
             orderedItems={orderedItems}
             loading={loading}
             hasMore={hasMore}
+            error={isAsync ? error : null}
+            onRetry={isAsync ? retry : undefined}
             listboxId={listboxId}
             activeIndex={activeIndex}
             selectedSet={selectedSet}

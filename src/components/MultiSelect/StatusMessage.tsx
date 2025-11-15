@@ -6,6 +6,7 @@ interface StatusMessageProps {
   isAsync: boolean;
   open: boolean;
   itemCount: number;
+  error: Error | null;
   id: string;
 }
 
@@ -17,16 +18,18 @@ export function StatusMessage({
   isAsync,
   open,
   itemCount,
+  error,
   id,
 }: StatusMessageProps) {
   const message = useMemo(() => {
+    if (error) return `Error loading results: ${error.message}`;
     if (loading && isAsync) return 'Loading results';
     if (!loading && open && itemCount === 0) return 'No results found';
     if (!loading && open && itemCount > 0) {
       return `${itemCount} ${itemCount === 1 ? 'option' : 'options'} available`;
     }
     return '';
-  }, [loading, isAsync, open, itemCount]);
+  }, [loading, isAsync, open, itemCount, error]);
 
   return (
     <div
