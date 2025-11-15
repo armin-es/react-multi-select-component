@@ -16,7 +16,7 @@ interface ListboxProps {
     selectedSet: Set<string>;
     rowHeight: number;
     height: number;
-    renderRow?: (item: OrderedItem, index: number, style: CSSProperties) => React.ReactElement;
+    renderRow?: (item: OrderedItem, index: number, style: CSSProperties) => JSX.Element;
     containerRef: React.RefObject<HTMLDivElement>;
     onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
     onMouseEnter: (index: number) => void;
