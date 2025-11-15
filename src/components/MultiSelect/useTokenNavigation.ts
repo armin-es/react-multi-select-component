@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { Item } from '../../types';
-import { focusTokenButton } from './utils';
+import { focusTokenButton } from './helpers';
 
 interface UseTokenNavigationOptions {
   selectedIds: string[];
@@ -47,18 +47,18 @@ export function useTokenNavigation({
 
       // After removal, focus the next token, previous token, or input
       requestAnimationFrame(() => {
-        focusTokenById(nextId ?? prevId);
+        focusTokenById(nextId ?? prevId ?? null);
       });
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
       e.stopPropagation();
       const prevId = currentIndex > 0 ? selectedIds[currentIndex - 1] : null;
-      focusTokenById(prevId);
+      focusTokenById(prevId ?? null);
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
       e.stopPropagation();
       const nextId = currentIndex < selectedIds.length - 1 ? selectedIds[currentIndex + 1] : null;
-      focusTokenById(nextId);
+      focusTokenById(nextId ?? null);
     }
   }, [selectedIds, commitSelection, focusTokenById]);
 
