@@ -4,7 +4,6 @@ import type { Item } from '../../types';
 interface UseSelectionOptions {
     selectedIds: string[];
     onChange: (ids: string[]) => void;
-    updateMRU: (id: string) => void;
     isAsync: boolean;
     asyncItems: Item[];
     setSelectedItemsCache: React.Dispatch<React.SetStateAction<Map<string, Item>>>;
@@ -13,12 +12,11 @@ interface UseSelectionOptions {
 
 /**
  * Custom hook for handling item selection/deselection logic
- * Handles MRU updates, cache management, and query clearing
+ * Maintains MRU order directly in selectedIds by always passing MRU-ordered arrays to onChange
  */
 export function useSelection({
     selectedIds,
     onChange,
-    updateMRU,
     isAsync,
     asyncItems,
     setSelectedItemsCache,
@@ -26,12 +24,13 @@ export function useSelection({
 }: UseSelectionOptions) {
     const commitSelection = useCallback((id: string) => {
         const isRemoving = selectedIds.includes(id);
+
+        // Maintain MRU order: when selecting, move to front; when removing, just filter out
         const next = isRemoving
             ? selectedIds.filter(x => x !== id)
-            : [...selectedIds, id];
+            : [id, ...selectedIds.filter(x => x !== id)]; // Move to front (MRU)
 
         onChange(next);
-        updateMRU(id);
 
         // Update selected items cache for async mode
         if (isAsync) {
@@ -54,7 +53,6 @@ export function useSelection({
     }, [
         selectedIds,
         onChange,
-        updateMRU,
         isAsync,
         asyncItems,
         setSelectedItemsCache,

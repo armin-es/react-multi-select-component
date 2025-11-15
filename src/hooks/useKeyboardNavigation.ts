@@ -10,7 +10,6 @@ interface UseKeyboardNavigationOptions {
   query: string;
   commitSelection: (id: string) => void;
   onChange: (ids: string[]) => void;
-  setMruOrder: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 interface UseKeyboardNavigationReturn {
@@ -31,7 +30,6 @@ export function useKeyboardNavigation({
   query,
   commitSelection,
   onChange,
-  setMruOrder,
 }: UseKeyboardNavigationOptions): UseKeyboardNavigationReturn {
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -84,15 +82,16 @@ export function useKeyboardNavigation({
           e.preventDefault();
           const last = selectedIds[selectedIds.length - 1];
           if (last) {
+            // Remove last item, but maintain MRU order by moving it to front if re-selected later
+            // For now, just remove it (MRU order is maintained in selectedIds)
             onChange(selectedIds.slice(0, -1));
-            setMruOrder(prev => [last, ...prev.filter(x => x !== last)]);
           }
         }
         break;
       default:
         break;
     }
-  }, [open, setOpen, orderedItems, activeIndex, commitSelection, query, selectedIds, onChange, setMruOrder]);
+  }, [open, setOpen, orderedItems, activeIndex, commitSelection, query, selectedIds, onChange]);
 
   // Reset active index when query changes or dropdown opens
   useEffect(() => {

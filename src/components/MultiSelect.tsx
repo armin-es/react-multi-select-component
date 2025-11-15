@@ -8,7 +8,6 @@ import {
   useFocusManagement,
   useScrollIntoView,
   useKeyboardNavigation,
-  useMRUOrder,
 } from '../hooks';
 import {
   StatusMessage,
@@ -17,6 +16,7 @@ import {
   Listbox,
   useTokenNavigation,
   useSelection,
+  useRenderRow,
   getSelectedItem as getSelectedItemUtil,
 } from './MultiSelect/index';
 
@@ -105,7 +105,6 @@ export default function MultiSelect({
   const listboxId = `${comboId}-listbox`;
 
   // Custom hooks
-  const { mruOrder, updateMRU, updateMRUOnRemove } = useMRUOrder();
 
   const {
     asyncItems,
@@ -127,15 +126,14 @@ export default function MultiSelect({
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const orderedItems = useMemo(() => {
     if (isSync && items) {
-      return orderItemsSync(items, selectedIds, query, mruOrder);
+      return orderItemsSync(items, selectedIds, query);
     }
-    return orderItemsAsync(asyncItems, selectedIds, mruOrder);
-  }, [isSync, items, asyncItems, selectedIds, query, mruOrder]);
+    return orderItemsAsync(asyncItems, selectedIds);
+  }, [isSync, items, asyncItems, selectedIds, query]);
 
   const { commitSelection } = useSelection({
     selectedIds,
     onChange,
-    updateMRU,
     isAsync,
     asyncItems,
     setSelectedItemsCache,
@@ -154,22 +152,6 @@ export default function MultiSelect({
     query,
     commitSelection,
     onChange,
-    setMruOrder: useCallback((updater: React.SetStateAction<string[]>) => {
-      // The hook uses this pattern: setMruOrder(prev => [last, ...prev.filter(x => x !== last)])
-      // So we extract the first item from the result and call updateMRUOnRemove
-      if (typeof updater === 'function') {
-        const newOrder = updater(mruOrder);
-        const firstItem = newOrder[0];
-        if (firstItem) {
-          updateMRUOnRemove(firstItem);
-        }
-      } else {
-        const firstItem = updater[0];
-        if (firstItem) {
-          updateMRUOnRemove(firstItem);
-        }
-      }
-    }, [mruOrder, updateMRUOnRemove]),
   });
 
   useClickOutside(comboboxRef, () => setOpen(false), open);
@@ -209,35 +191,14 @@ export default function MultiSelect({
     inputRef,
   });
 
-  // Render row for virtualized list (sync mode only)
-  const renderRow = useCallback((item: OrderedItem, index: number, style: React.CSSProperties) => {
-    const active = index === activeIndex;
-    const selected = selectedSet.has(item.id);
-    const id = `${listboxId}-option-${index}`;
-    const optionText = `${item.label}${item.group ? `, ${item.group}` : ''}${selected ? ', selected' : ''}`;
-
-    return (
-      <div
-        key={item.id}
-        id={id}
-        role="option"
-        aria-selected={selected}
-        aria-label={optionText}
-        data-active={active || undefined}
-        data-selected={selected || undefined}
-        className="ms-option"
-        style={style}
-        onMouseEnter={() => setActiveIndex(index)}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          commitSelection(item.id);
-        }}
-      >
-        <span className="ms-label">{item.label}</span>
-        {selected ? <span className="ms-check" aria-hidden="true">✓</span> : null}
-      </div>
-    );
-  }, [activeIndex, selectedSet, listboxId, setActiveIndex, commitSelection]);
+  // Render row hook for virtualized list (sync mode only)
+  const renderRow = useRenderRow({
+    activeIndex,
+    selectedSet,
+    listboxId,
+    setActiveIndex,
+    commitSelection,
+  });
 
   const statusId = `${comboId}-status`;
   const helperId = `${comboId}-helper`;
