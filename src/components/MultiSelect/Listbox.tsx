@@ -20,7 +20,7 @@ interface ListboxProps {
     containerRef: React.RefObject<HTMLDivElement>;
     onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
     onMouseEnter: (index: number) => void;
-    onSelect: (id: string) => void;
+    onItemSelect: (id: string) => void;
 }
 
 /**
@@ -42,7 +42,7 @@ export function Listbox({
     containerRef,
     onScroll,
     onMouseEnter,
-    onSelect,
+    onItemSelect,
 }: ListboxProps) {
     if (loading && orderedItems.length === 0) {
         return <EmptyState loading={true} error={null} listboxId={listboxId} />;
@@ -93,7 +93,7 @@ export function Listbox({
                         selected={selectedSet.has(item.id)}
                         listboxId={listboxId}
                         onMouseEnter={() => onMouseEnter(i)}
-                        onSelect={onSelect}
+                        onItemSelect={onItemSelect}
                     />
                 ))}
             </div>

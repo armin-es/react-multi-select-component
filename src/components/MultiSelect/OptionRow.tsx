@@ -9,7 +9,7 @@ interface OptionRowProps {
   selected: boolean;
   listboxId: string;
   onMouseEnter: () => void;
-  onSelect: (id: string) => void;
+  onItemSelect: (id: string) => void;
 }
 
 /**
@@ -23,7 +23,7 @@ export function OptionRow({
   selected,
   listboxId,
   onMouseEnter,
-  onSelect,
+  onItemSelect,
 }: OptionRowProps) {
   const id = `${listboxId}-option-${index}`;
   const optionText = `${item.label}${item.group ? `, ${item.group}` : ''}${selected ? ', selected' : ''}`;
@@ -42,7 +42,7 @@ export function OptionRow({
       onMouseEnter={onMouseEnter}
       onMouseDown={(e) => {
         e.preventDefault();
-        onSelect(item.id);
+        onItemSelect(item.id);
       }}
     >
       <span className="ms-label">{item.label}</span>

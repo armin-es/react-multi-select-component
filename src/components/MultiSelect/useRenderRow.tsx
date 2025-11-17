@@ -37,7 +37,7 @@ export function useRenderRow({
         selected={selectedSet.has(item.id)}
         listboxId={listboxId}
         onMouseEnter={() => setActiveIndex(index)}
-        onSelect={commitSelection}
+        onItemSelect={commitSelection}
       />
     ),
     [activeIndex, selectedSet, listboxId, setActiveIndex, commitSelection]
