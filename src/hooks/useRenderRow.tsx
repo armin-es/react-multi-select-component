@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import type React from 'react';
-import type { OrderedItem } from '../../utils/ordering';
-import { OptionRow } from './OptionRow';
+import type { OrderedItem } from '../utils/ordering';
+import { OptionRow } from '../components/MultiSelect/OptionRow';
 
 interface UseRenderRowOptions {
   activeIndex: number;

@@ -8,15 +8,15 @@ import {
   useFocusManagement,
   useScrollIntoView,
   useKeyboardNavigation,
+  useSelection,
+  useTokenNavigation,
+  useRenderRow,
 } from '../hooks';
 import {
   StatusMessage,
   ClearButton,
   Token,
   Listbox,
-  useSelection,
-  useTokenNavigation,
-  useRenderRow,
   getSelectedItem as getSelectedItemUtil,
 } from './MultiSelect/index';
 

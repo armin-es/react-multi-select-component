@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import type { Item } from '../../types';
-import { focusTokenButton } from './helpers';
+import type { Item } from '../types';
+import { focusTokenButton } from '../components/MultiSelect/helpers';
 
 interface UseTokenNavigationOptions {
   selectedIds: string[];

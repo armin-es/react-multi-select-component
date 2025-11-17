@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { Item } from '../../types';
+import type { Item } from '../types';
 
 interface UseSelectionOptions {
     selectedIds: string[];
