@@ -14,8 +14,8 @@ import {
   ClearButton,
   Token,
   Listbox,
-  useTokenNavigation,
   useSelection,
+  useTokenNavigation,
   useRenderRow,
   getSelectedItem as getSelectedItemUtil,
 } from './MultiSelect/index';
@@ -111,8 +111,8 @@ export default function MultiSelect({
     loading,
     hasMore,
     error,
-    selectedItemsCache,
-    setSelectedItemsCache,
+    selectedItems,
+    setSelectedItems,
     handleScroll,
     retry,
   } = useAsyncItems({
@@ -136,7 +136,7 @@ export default function MultiSelect({
     onChange,
     isAsync,
     asyncItems,
-    setSelectedItemsCache,
+    setSelectedItems,
     setQuery,
   });
 
@@ -152,6 +152,26 @@ export default function MultiSelect({
     query,
     commitSelection,
     onChange,
+  });
+
+  const getSelectedItem = useCallback((id: string) => {
+    return getSelectedItemUtil(id, isSync, items, selectedItems, asyncItems);
+  }, [isSync, items, selectedItems, asyncItems]);
+
+  const { handleTokenKeyDown } = useTokenNavigation({
+    selectedIds,
+    getSelectedItem,
+    commitSelection,
+    inputRef,
+  });
+
+  // Render row hook for virtualized list (sync mode only)
+  const renderRow = useRenderRow({
+    activeIndex,
+    selectedSet,
+    listboxId,
+    setActiveIndex,
+    commitSelection,
   });
 
   useClickOutside(comboboxRef, () => setOpen(false), open);
@@ -170,35 +190,13 @@ export default function MultiSelect({
 
   const height = visibleRows * rowHeight;
 
-  // Find selected items for token display (works in both modes)
-  const getSelectedItem = useCallback((id: string) => {
-    return getSelectedItemUtil(id, isSync, items, selectedItemsCache, asyncItems);
-  }, [isSync, items, selectedItemsCache, asyncItems]);
-
   const clearAll = useCallback(() => {
     onChange([]);
     if (isAsync) {
-      setSelectedItemsCache(new Map());
+      setSelectedItems(new Map());
     }
     inputRef.current?.focus();
-  }, [onChange, isAsync, setSelectedItemsCache]);
-
-  // Token navigation hook
-  const { handleTokenKeyDown } = useTokenNavigation({
-    selectedIds,
-    getSelectedItem,
-    commitSelection,
-    inputRef,
-  });
-
-  // Render row hook for virtualized list (sync mode only)
-  const renderRow = useRenderRow({
-    activeIndex,
-    selectedSet,
-    listboxId,
-    setActiveIndex,
-    commitSelection,
-  });
+  }, [onChange, isAsync, setSelectedItems]);
 
   const statusId = `${comboId}-status`;
   const helperId = `${comboId}-helper`;
@@ -289,7 +287,7 @@ export default function MultiSelect({
             containerRef={isSync ? virtualListContainerRef : scrollingContainerRef}
             onScroll={handleScroll}
             onMouseEnter={setActiveIndex}
-            onSelect={commitSelection}
+            onItemSelect={commitSelection}
           />
         </div>
       </div>

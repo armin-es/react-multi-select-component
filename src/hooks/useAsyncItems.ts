@@ -16,8 +16,8 @@ interface UseAsyncItemsReturn {
   loading: boolean;
   hasMore: boolean;
   error: Error | null;
-  selectedItemsCache: Map<string, Item>;
-  setSelectedItemsCache: React.Dispatch<React.SetStateAction<Map<string, Item>>>;
+  selectedItems: Map<string, Item>;
+  setSelectedItems: React.Dispatch<React.SetStateAction<Map<string, Item>>>;
   loadMore: (reset?: boolean) => Promise<void>;
   handleScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   retry: () => void;
@@ -25,7 +25,7 @@ interface UseAsyncItemsReturn {
 
 /**
  * Custom hook for managing async item fetching with pagination and debounced search.
- * Handles loading state, pagination, infinite scroll, and caching of selected items.
+ * Handles loading state, pagination, infinite scroll, and storing selected items.
  */
 export function useAsyncItems({
   fetchItems,
@@ -40,7 +40,7 @@ export function useAsyncItems({
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [selectedItemsCache, setSelectedItemsCache] = useState<Map<string, Item>>(new Map());
+  const [selectedItems, setSelectedItems] = useState<Map<string, Item>>(new Map());
 
   const pageRef = useRef(0);
   const queryRef = useRef('');
@@ -104,15 +104,15 @@ export function useAsyncItems({
       setAsyncItems(prev => reset ? fetched : [...prev, ...fetched]);
       setHasMore(fetched.length >= pageSize);
 
-      // Update cache with any newly fetched selected items
-      setSelectedItemsCache(prev => {
-        const nextCache = new Map(prev);
+      // Update selected items with any newly fetched selected items
+      setSelectedItems(prev => {
+        const next = new Map(prev);
         fetched.forEach(item => {
           if (selectedSet.current.has(item.id)) {
-            nextCache.set(item.id, item);
+            next.set(item.id, item);
           }
         });
-        return nextCache;
+        return next;
       });
       pageRef.current += 1;
     } catch (err) {
@@ -206,8 +206,8 @@ export function useAsyncItems({
     loading,
     hasMore,
     error,
-    selectedItemsCache,
-    setSelectedItemsCache,
+    selectedItems,
+    setSelectedItems,
     loadMore,
     handleScroll,
     retry,

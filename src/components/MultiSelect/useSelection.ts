@@ -6,7 +6,7 @@ interface UseSelectionOptions {
     onChange: (ids: string[]) => void;
     isAsync: boolean;
     asyncItems: Item[];
-    setSelectedItemsCache: React.Dispatch<React.SetStateAction<Map<string, Item>>>;
+    setSelectedItems: React.Dispatch<React.SetStateAction<Map<string, Item>>>;
     setQuery: (query: string) => void;
 }
 
@@ -19,7 +19,7 @@ export function useSelection({
     onChange,
     isAsync,
     asyncItems,
-    setSelectedItemsCache,
+    setSelectedItems,
     setQuery,
 }: UseSelectionOptions) {
     const commitSelection = useCallback((id: string) => {
@@ -32,19 +32,19 @@ export function useSelection({
 
         onChange(next);
 
-        // Update selected items cache for async mode
+        // Update selected items for async mode
         if (isAsync) {
-            setSelectedItemsCache(prev => {
-                const nextCache = new Map(prev);
+            setSelectedItems(prev => {
+                const next = new Map(prev);
                 if (isRemoving) {
-                    nextCache.delete(id);
+                    next.delete(id);
                 } else {
                     const item = asyncItems.find(i => i.id === id);
                     if (item) {
-                        nextCache.set(id, item);
+                        next.set(id, item);
                     }
                 }
-                return nextCache;
+                return next;
             });
         }
 
@@ -55,7 +55,7 @@ export function useSelection({
         onChange,
         isAsync,
         asyncItems,
-        setSelectedItemsCache,
+        setSelectedItems,
         setQuery,
     ]);
 

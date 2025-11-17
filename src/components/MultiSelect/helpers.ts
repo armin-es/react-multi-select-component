@@ -9,19 +9,19 @@ export function focusTokenButton(label: string): void {
 }
 
 /**
- * Get selected item from items array or cache
+ * Get selected item from items array or selected items map
  */
 export function getSelectedItem(
   id: string,
   isSync: boolean,
   items: Item[] | undefined,
-  selectedItemsCache: Map<string, Item>,
+  selectedItems: Map<string, Item>,
   asyncItems: Item[]
 ): Item | undefined {
   if (isSync && items) {
     return items.find(i => i.id === id);
   }
-  // In async mode, check cache first (persists across searches), then asyncItems
-  return selectedItemsCache.get(id) || asyncItems.find(i => i.id === id);
+  // In async mode, check selected items first (persists across searches), then asyncItems
+  return selectedItems.get(id) || asyncItems.find(i => i.id === id);
 }
 
